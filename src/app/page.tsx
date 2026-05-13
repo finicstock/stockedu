@@ -8,6 +8,7 @@ import { BadgeCard } from "@/components/BadgeCard";
 import { DisclaimerBox } from "@/components/DisclaimerBox";
 import { PortfolioSummary } from "@/components/PortfolioSummary";
 import { ProgressBar } from "@/components/ProgressBar";
+import { SmallTalkPromo } from "@/components/SmallTalkPromo";
 
 export default function HomePage() {
   const { state } = useLearningProgress();
@@ -57,6 +58,8 @@ export default function HomePage() {
           <StatusTile icon={Coins} label="기본 가상 투자금" value="1,000만 원" />
         </div>
       </section>
+
+      <SmallTalkPromo />
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
