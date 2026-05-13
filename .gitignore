@@ -12,3 +12,5 @@ yarn-error.log*
 *.tsbuildinfo
 dev-server*.log
 .DS_Store
+
+.vercel
