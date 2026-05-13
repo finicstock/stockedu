@@ -20,7 +20,13 @@ export function SmallTalkPromo({ variant = "banner" }: SmallTalkPromoProps) {
 
   return (
     <section className="mt-6 overflow-hidden rounded-lg bg-ink text-white shadow-soft">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <a
+        href={SMALL_TALK_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="닉스의 스몰톡에서 투자에 대한 진짜 이야기 보기"
+        className="group flex flex-col gap-4 p-5 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-lemon focus:ring-offset-2 focus:ring-offset-ink sm:flex-row sm:items-center sm:justify-between sm:p-6"
+      >
         <div className="flex gap-3">
           <div className="grid h-11 w-11 flex-none place-items-center rounded-full bg-white/12">
             <MessageCircle className="h-5 w-5 text-lemon" aria-hidden="true" />
@@ -28,7 +34,10 @@ export function SmallTalkPromo({ variant = "banner" }: SmallTalkPromoProps) {
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-lemon">More Stories</p>
             <p className="mt-1 text-lg font-black leading-7 sm:text-xl">
-              투자에 대한 진짜 이야기는 <PromoLink className="text-lemon underline decoration-lemon/50 underline-offset-4 transition hover:text-white" />
+              투자에 대한 진짜 이야기는{" "}
+              <span className="font-black text-lemon underline decoration-lemon/50 underline-offset-4 transition group-hover:text-white">
+                닉스의 스몰톡
+              </span>
               에서
             </p>
             <p className="mt-1 text-sm leading-6 text-white/75">
@@ -36,16 +45,11 @@ export function SmallTalkPromo({ variant = "banner" }: SmallTalkPromoProps) {
             </p>
           </div>
         </div>
-        <a
-          href={SMALL_TALK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-ink transition hover:bg-lemon"
-        >
+        <span className="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-ink transition group-hover:bg-lemon">
           보러 가기
           <ExternalLink className="h-4 w-4" aria-hidden="true" />
-        </a>
-      </div>
+        </span>
+      </a>
     </section>
   );
 }
