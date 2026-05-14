@@ -1,7 +1,8 @@
 import { ExternalLink, MessageCircle } from "lucide-react";
 import clsx from "clsx";
+import { brand } from "@/lib/brand";
 
-const SMALL_TALK_URL = "https://contents.premium.naver.com/finics/bubu";
+const SMALL_TALK_URL = brand.smallTalkUrl;
 
 interface SmallTalkPromoProps {
   variant?: "banner" | "footer";

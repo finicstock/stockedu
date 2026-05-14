@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Award, BookOpen, CheckCircle2, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Award,
+  BookOpen,
+  CheckCircle2,
+  HelpCircle,
+  PlayCircle,
+  RotateCcw,
+  Trophy
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { getModuleById, getNextModule } from "@/data/modules";
 import { BadgeCard } from "@/components/BadgeCard";
 import { FeedbackCard } from "@/components/FeedbackCard";
@@ -12,10 +23,13 @@ import { QuizBlock } from "@/components/QuizBlock";
 import { SimulationPanel } from "@/components/SimulationPanel";
 import { useLearningProgress } from "@/hooks/useLearningProgress";
 
+type ModuleStep = "learn" | "simulation" | "quiz" | "result";
+
 export default function ModuleDetailPage() {
   const params = useParams<{ id: string }>();
   const learningModule = getModuleById(params.id);
   const { state, completeModule } = useLearningProgress();
+  const [activeStep, setActiveStep] = useState<ModuleStep>("learn");
   const [selectedChoiceId, setSelectedChoiceId] = useState<"A" | "B" | "C" | undefined>();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<ReturnType<typeof completeModule> | undefined>();
@@ -38,17 +52,20 @@ export default function ModuleDetailPage() {
   const completed = state.completedModules[learningModule.id];
   const selectedChoice = learningModule.choices.find((choice) => choice.id === selectedChoiceId);
   const allAnswered = learningModule.quiz.every((question) => answers[question.id] !== undefined);
-  const progress = completed ? 100 : selectedChoiceId ? (allAnswered ? 80 : 50) : 25;
+  const progress = completed || result ? 100 : getStepProgress(activeStep, Boolean(selectedChoiceId), allAnswered);
 
   function handleFinish() {
     if (!selectedChoiceId) {
       return;
     }
 
-    setResult(completeModule(activeModule, selectedChoiceId, answers));
+    const nextResult = completeModule(activeModule, selectedChoiceId, answers);
+    setResult(nextResult);
+    setActiveStep("result");
   }
 
   function handleRetry() {
+    setActiveStep("learn");
     setSelectedChoiceId(undefined);
     setAnswers({});
     setResult(undefined);
@@ -83,50 +100,79 @@ export default function ModuleDetailPage() {
         </div>
       </section>
 
-      <section className="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
-          <div className="mb-3 flex items-center gap-2 font-bold text-ink">
-            <BookOpen className="h-5 w-5 text-peach" aria-hidden="true" />
-            쉬운 개념 설명
-          </div>
-          <p className="leading-7 text-slate-700">{learningModule.beginnerExplanation}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
-          <p className="mb-3 font-bold text-ink">용어 돋보기</p>
-          <div className="flex flex-wrap gap-2">
-            {learningModule.keyConcepts.map((concept) => (
-              <span
-                key={concept.term}
-                title={concept.easyMeaning}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-ink"
-              >
-                {concept.term}: <span className="font-normal text-slate-600">{concept.easyMeaning}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+      <StepNavigator
+        activeStep={activeStep}
+        canOpenQuiz={Boolean(selectedChoiceId)}
+        canOpenResult={Boolean(result)}
+        onChange={setActiveStep}
+      />
 
-      <div className="mt-8">
-        <SimulationPanel
-          learningModule={learningModule}
-          selectedChoiceId={selectedChoiceId}
-          locked={Boolean(result)}
-          onSelect={setSelectedChoiceId}
-        />
-      </div>
-
-      {selectedChoice ? (
-        <section className="mt-8">
-          <FeedbackCard
-            choice={selectedChoice}
-            feedback={learningModule.feedbackByChoice[selectedChoice.id]}
-            impactNote={selectedChoice.impact?.note}
-          />
+      {activeStep === "learn" ? (
+        <section className="mt-8 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+            <div className="mb-3 flex items-center gap-2 font-bold text-ink">
+              <BookOpen className="h-5 w-5 text-peach" aria-hidden="true" />
+              쉬운 개념 설명
+            </div>
+            <p className="leading-7 text-slate-700">{learningModule.beginnerExplanation}</p>
+            <button
+              type="button"
+              onClick={() => setActiveStep("simulation")}
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink px-4 font-bold text-white"
+            >
+              가상 상황으로 이동
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+            <p className="mb-3 font-bold text-ink">용어 돋보기</p>
+            <div className="flex flex-wrap gap-2">
+              {learningModule.keyConcepts.map((concept) => (
+                <span
+                  key={concept.term}
+                  title={concept.easyMeaning}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-ink"
+                >
+                  {concept.term}: <span className="font-normal text-slate-600">{concept.easyMeaning}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </section>
       ) : null}
 
-      {selectedChoice ? (
+      {activeStep === "simulation" ? (
+        <>
+          <div className="mt-8">
+            <SimulationPanel
+              learningModule={learningModule}
+              selectedChoiceId={selectedChoiceId}
+              locked={Boolean(result)}
+              onSelect={setSelectedChoiceId}
+            />
+          </div>
+
+          {selectedChoice ? (
+            <section className="mt-8">
+              <FeedbackCard
+                choice={selectedChoice}
+                feedback={learningModule.feedbackByChoice[selectedChoice.id]}
+                impactNote={selectedChoice.impact?.note}
+              />
+              <button
+                type="button"
+                onClick={() => setActiveStep("quiz")}
+                className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink px-4 font-bold text-white"
+              >
+                퀴즈로 확인하기
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </section>
+          ) : null}
+        </>
+      ) : null}
+
+      {activeStep === "quiz" ? (
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-2xl font-black text-ink">퀴즈로 확인하기</h2>
@@ -134,29 +180,37 @@ export default function ModuleDetailPage() {
               {Object.keys(answers).length}/{learningModule.quiz.length}
             </span>
           </div>
-          <QuizBlock
-            quiz={learningModule.quiz}
-            answers={answers}
-            onAnswer={(questionId, answerIndex) =>
-              setAnswers((current) => ({ ...current, [questionId]: answerIndex }))
-            }
-            showResult={Boolean(result)}
-          />
-          {!result ? (
-            <button
-              type="button"
-              disabled={!allAnswered}
-              onClick={handleFinish}
-              className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-ink px-6 font-bold text-white transition enabled:hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              점수와 배지 받기
-              <Award className="h-4 w-4" aria-hidden="true" />
-            </button>
-          ) : null}
+          {selectedChoice ? (
+            <>
+              <QuizBlock
+                quiz={learningModule.quiz}
+                answers={answers}
+                onAnswer={(questionId, answerIndex) =>
+                  setAnswers((current) => ({ ...current, [questionId]: answerIndex }))
+                }
+                showResult={Boolean(result)}
+              />
+              {!result ? (
+                <button
+                  type="button"
+                  disabled={!allAnswered}
+                  onClick={handleFinish}
+                  className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-ink px-6 font-bold text-white transition enabled:hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  점수와 배지 받기
+                  <Award className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+              먼저 시뮬레이션에서 선택지를 골라주세요.
+            </div>
+          )}
         </section>
       ) : null}
 
-      {result ? (
+      {activeStep === "result" && result ? (
         <section className="mt-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="rounded-lg border border-mint/30 bg-mint/10 p-6">
             <div className="mb-4 flex items-center gap-3">
@@ -208,5 +262,68 @@ export default function ModuleDetailPage() {
         </section>
       ) : null}
     </main>
+  );
+}
+
+function getStepProgress(step: ModuleStep, hasChoice: boolean, allAnswered: boolean) {
+  if (step === "result") {
+    return 100;
+  }
+  if (step === "quiz") {
+    return allAnswered ? 85 : 65;
+  }
+  if (step === "simulation") {
+    return hasChoice ? 55 : 40;
+  }
+  return 25;
+}
+
+function StepNavigator({
+  activeStep,
+  canOpenQuiz,
+  canOpenResult,
+  onChange
+}: {
+  activeStep: ModuleStep;
+  canOpenQuiz: boolean;
+  canOpenResult: boolean;
+  onChange: (step: ModuleStep) => void;
+}) {
+  const steps: Array<{
+    id: ModuleStep;
+    label: string;
+    icon: LucideIcon;
+    enabled: boolean;
+  }> = [
+    { id: "learn", label: "학습", icon: BookOpen, enabled: true },
+    { id: "simulation", label: "시뮬레이션", icon: PlayCircle, enabled: true },
+    { id: "quiz", label: "퀴즈", icon: HelpCircle, enabled: canOpenQuiz },
+    { id: "result", label: "결과", icon: Trophy, enabled: canOpenResult }
+  ];
+
+  return (
+    <div className="mt-6 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-2 md:grid-cols-4">
+      {steps.map((step) => {
+        const Icon = step.icon;
+        const active = activeStep === step.id;
+
+        return (
+          <button
+            key={step.id}
+            type="button"
+            disabled={!step.enabled}
+            onClick={() => onChange(step.id)}
+            className={
+              active
+                ? "flex min-h-11 items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-black text-ink shadow-sm"
+                : "flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-bold text-slate-500 transition enabled:hover:bg-white enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-45"
+            }
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {step.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

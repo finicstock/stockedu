@@ -1,26 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Trophy } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  Brain,
+  CheckCircle2,
+  Clipboard,
+  RefreshCw,
+  RotateCcw,
+  Share2,
+  Target,
+  Trophy
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { learningModules } from "@/data/modules";
 import { BadgeCard } from "@/components/BadgeCard";
 import { ProgressBar } from "@/components/ProgressBar";
 import { useLearningProgress } from "@/hooks/useLearningProgress";
+import { brand } from "@/lib/brand";
+import { getLearningInsights } from "@/lib/learningInsights";
 
 export default function ResultsPage() {
-  const { state } = useLearningProgress();
+  const { state, resetProgress } = useLearningProgress();
+  const [copied, setCopied] = useState(false);
   const completedModules = learningModules.filter((learningModule) => state.completedModules[learningModule.id]);
   const nextModule =
     learningModules.find((learningModule) => !state.completedModules[learningModule.id]) ??
     learningModules[0];
   const progress = (completedModules.length / learningModules.length) * 100;
-  const averageScore =
-    completedModules.length === 0
-      ? 0
-      : Math.round(
-          completedModules.reduce((sum, learningModule) => sum + state.completedModules[learningModule.id].score, 0) /
-            completedModules.length
-        );
+  const insights = getLearningInsights(learningModules, state);
+  const averageScore = insights.averageScore;
+
+  async function handleCopyShareText() {
+    const text = `${insights.shareText}\n${brand.productionUrl}`;
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }
+  }
+
+  function handleResetProgress() {
+    if (typeof window !== "undefined" && window.confirm("모든 학습 기록과 가상 포트폴리오를 초기화할까요?")) {
+      resetProgress();
+    }
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -59,6 +86,146 @@ export default function ResultsPage() {
         </div>
       </section>
 
+      <section className="mt-8 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-full bg-mint/10 text-mint">
+              <Brain className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-mint">나의 학습 성향 리포트</p>
+              <h2 className="text-2xl font-black text-ink">{insights.profile.title}</h2>
+            </div>
+          </div>
+          <p className="leading-7 text-slate-700">{insights.profile.description}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {insights.profile.traits.map((trait) => (
+              <span key={trait} className="rounded-full bg-skysoft px-3 py-2 text-sm font-bold text-ink">
+                {trait}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <InsightMetric
+            icon={Target}
+            label="근거 있는 선택"
+            value={`${insights.recommendedCount}회`}
+            description="추천 선택지를 고른 횟수입니다."
+          />
+          <InsightMetric
+            icon={RefreshCw}
+            label="복습 필요 선택"
+            value={`${insights.mixedCount + insights.riskyCount}회`}
+            description="다시 비교하면 점수가 오를 수 있습니다."
+          />
+          <InsightMetric
+            icon={BarChart3}
+            label="퀴즈 정답률"
+            value={`${insights.quizAccuracy}%`}
+            description="개념 이해도를 보여주는 학습용 지표입니다."
+          />
+          <InsightMetric
+            icon={Share2}
+            label="완료 미션"
+            value={`${completedModules.length}개`}
+            description="전체 12개 중 완료한 미션입니다."
+          />
+        </div>
+      </section>
+
+      <section className="mt-8 grid gap-5 lg:grid-cols-[1fr_0.85fr]">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-peach">복습 추천</p>
+              <h2 className="text-2xl font-black text-ink">점수가 오를 수 있는 미션</h2>
+            </div>
+            <Link href="/modules" className="text-sm font-bold text-mint">
+              전체 보기
+            </Link>
+          </div>
+          {insights.reviewTargets.length > 0 ? (
+            <div className="grid gap-3">
+              {insights.reviewTargets.map((target) => (
+                <Link
+                  key={target.moduleId}
+                  href={`/modules/${target.moduleId}`}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-mint hover:bg-skysoft"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-black text-ink">{target.title}</p>
+                    <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-peach">
+                      {target.score}점
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{target.reason}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-slate-500">
+              아직 복습 추천이 없습니다. 미션을 완료하면 약점이 자동으로 정리됩니다.
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-ink bg-ink p-6 text-white shadow-soft">
+          <p className="mb-2 text-sm font-bold text-lemon">공유용 결과 카드</p>
+          <h2 className="text-2xl font-black">나의 주식 입문 퀘스트</h2>
+          <div className="mt-5 rounded-lg bg-white/10 p-4">
+            <p className="text-sm leading-7 text-white/85">{insights.shareText}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyShareText}
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-ink transition hover:bg-lemon"
+          >
+            <Clipboard className="h-4 w-4" aria-hidden="true" />
+            {copied ? "복사 완료" : "공유 문구 복사"}
+          </button>
+          <button
+            type="button"
+            onClick={handleResetProgress}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-transparent px-4 text-sm font-bold text-white transition hover:bg-white/10"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            학습 기록 초기화
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-full bg-peach/10 text-peach">
+            <Target className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-peach">약점 개념</p>
+            <h2 className="text-2xl font-black text-ink">다음 복습 때 먼저 볼 부분</h2>
+          </div>
+        </div>
+        {insights.weakConcepts.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {insights.weakConcepts.map((concept) => (
+              <Link
+                key={concept.moduleId}
+                href={`/modules/${concept.moduleId}`}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-peach"
+              >
+                <p className="font-black text-ink">{concept.title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{concept.reason}</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            아직 약점 데이터가 충분하지 않습니다. 미션을 몇 개 완료하면 자동으로 추천됩니다.
+          </p>
+        )}
+      </section>
+
       <section className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
         <h2 className="mb-5 text-2xl font-black text-ink">의사결정 요약</h2>
         {completedModules.length > 0 ? (
@@ -95,5 +262,26 @@ export default function ResultsPage() {
         )}
       </section>
     </main>
+  );
+}
+
+function InsightMetric({
+  icon: Icon,
+  label,
+  value,
+  description
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+      <Icon className="mb-4 h-6 w-6 text-peach" aria-hidden="true" />
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-black text-ink">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
   );
 }
